@@ -7,6 +7,11 @@ const PUBLIC_URL =
 
 const WEB_URL =
   "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
+const QUOTE_URL =
+  "https://www.binance.com/bapi/c2c/v1/public/c2c/agent/quote-price";
+
+const TRADE_METHODS_URL =
+  "https://www.binance.com/bapi/c2c/v1/public/c2c/agent/trade-methods";
 
 const browserHeaders = {
   "accept": "application/json, text/plain, */*",
@@ -144,8 +149,41 @@ async function runProbes() {
   fiat: "BRL",
   tradeType
 });
+const quoteBuy = new URL(QUOTE_URL);
+quoteBuy.searchParams.set("fiat", "BRL");
+quoteBuy.searchParams.set("asset", "USDT");
+quoteBuy.searchParams.set("tradeType", "BUY");
 
-  return Promise.all([
+const quoteSell = new URL(QUOTE_URL);
+quoteSell.searchParams.set("fiat", "BRL");
+quoteSell.searchParams.set("asset", "USDT");
+quoteSell.searchParams.set("tradeType", "SELL");
+
+const tradeMethodsBrl = new URL(TRADE_METHODS_URL);
+tradeMethodsBrl.searchParams.set("fiat", "BRL");
+  return Promise.all([probe("QUOTE_PRICE_BUY", quoteBuy, {
+  method: "GET",
+  headers: {
+    accept: "application/json, text/plain, */*",
+    "user-agent": browserHeaders["user-agent"]
+  }
+}),
+
+probe("QUOTE_PRICE_SELL", quoteSell, {
+  method: "GET",
+  headers: {
+    accept: "application/json, text/plain, */*",
+    "user-agent": browserHeaders["user-agent"]
+  }
+}),
+
+probe("TRADE_METHODS_BRL", tradeMethodsBrl, {
+  method: "GET",
+  headers: {
+    accept: "application/json, text/plain, */*",
+    "user-agent": browserHeaders["user-agent"]
+  }
+}),
     probe("PUBLIC_AD_LIST_BUY", publicBuy, {
       method: "GET",
       headers: {
