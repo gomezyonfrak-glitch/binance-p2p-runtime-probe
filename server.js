@@ -141,13 +141,18 @@ async function runProbes() {
   Object.entries({ ...publicBase, tradeType: "SELL" }).forEach(
     ([key, value]) => publicSell.searchParams.set(key, value)
   );
+const publicBuyPix = new URL(publicBuy);
+publicBuyPix.searchParams.set("tradeMethodIdentifiers", "Pix");
 
-  const webPayload = (tradeType) => ({
+const publicSellPix = new URL(publicSell);
+publicSellPix.searchParams.set("tradeMethodIdentifiers", "Pix");
+  const webPayload = (tradeType, pix = false) => ({
   page: 1,
   rows: 10,
   asset: "USDT",
   fiat: "BRL",
-  tradeType
+  tradeType,
+  ...(pix ? { payTypes: ["Pix"] } : {})
 });
 const quoteBuy = new URL(QUOTE_URL);
 quoteBuy.searchParams.set("fiat", "BRL");
@@ -211,7 +216,35 @@ probe("TRADE_METHODS_BRL", tradeMethodsBrl, {
       headers: browserHeaders,
       body: JSON.stringify(webPayload("SELL"))
     })
-  ]);
+ ,
+
+probe("PUBLIC_AD_LIST_BUY_PIX", publicBuyPix, {
+  method: "GET",
+  headers: {
+    accept: "application/json, text/plain, */*",
+    "user-agent": browserHeaders["user-agent"]
+  }
+}),
+
+probe("PUBLIC_AD_LIST_SELL_PIX", publicSellPix, {
+  method: "GET",
+  headers: {
+    accept: "application/json, text/plain, */*",
+    "user-agent": browserHeaders["user-agent"]
+  }
+}),
+
+probe("WEB_ADV_SEARCH_BUY_PIX", WEB_URL, {
+  method: "POST",
+  headers: browserHeaders,
+  body: JSON.stringify(webPayload("BUY", true))
+}),
+
+probe("WEB_ADV_SEARCH_SELL_PIX", WEB_URL, {
+  method: "POST",
+  headers: browserHeaders,
+  body: JSON.stringify(webPayload("SELL", true))
+}) ]);
 }
 
 const server = http.createServer(async (req, res) => {
