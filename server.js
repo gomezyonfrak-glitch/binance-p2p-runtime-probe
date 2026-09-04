@@ -138,15 +138,12 @@ async function runProbes() {
   );
 
   const webPayload = (tradeType) => ({
-    page: 1,
-    rows: 10,
-    payTypes: [],
-    countries: [],
-    publisherType: null,
-    asset: "USDT",
-    fiat: "BRL",
-    tradeType
-  });
+  page: 1,
+  rows: 10,
+  asset: "USDT",
+  fiat: "BRL",
+  tradeType
+});
 
   return Promise.all([
     probe("PUBLIC_AD_LIST_BUY", publicBuy, {
