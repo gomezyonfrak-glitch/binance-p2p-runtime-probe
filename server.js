@@ -7,53 +7,44 @@ const PUBLIC_URL =
 
 const WEB_URL =
   "https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search";
+
 const QUOTE_URL =
   "https://www.binance.com/bapi/c2c/v1/public/c2c/agent/quote-price";
 
 const TRADE_METHODS_URL =
   "https://www.binance.com/bapi/c2c/v1/public/c2c/agent/trade-methods";
+
 const BYBIT_URL =
   "https://api2.bybit.com/fiat/otc/item/online";
+
 const browserHeaders = {
-"content-type": "application/json",
-"bnc-location": "BR",
+  "content-type": "application/json",
+  "bnc-location": "BR"
 };
 
+function extractItems(data) {
+  if (Array.isArray(data?.data)) return data.data;
+  if (Array.isArray(data?.data?.items)) return data.data.items;
+  if (Array.isArray(data?.items)) return data.items;
+  return [];
+}
+
 function countItems(data) {
-  if (Array.isArray(data?.data)) return data.data.length;
-  if (Array.isArray(data?.data?.items)) return data.data.items.length;
-  if (Array.isArray(data?.items)) return data.items.length;
-  return 0;
+  return extractItems(data).length;
 }
 
 function firstItem(data) {
-  if (Array.isArray(data?.data)) return data.data[0];
-  if (Array.isArray(data?.data?.items)) return data.data.items[0];
-  if (Array.isArray(data?.items)) return data.items[0];
-  return null;
+  return extractItems(data)[0] ?? null;
 }
-function adIds(data) {
-  const items = Array.isArray(data?.data)
-    ? data.data
-    : Array.isArray(data?.data?.items)
-      ? data.data.items
-      : Array.isArray(data?.items)
-        ? data.items
-        : [];
 
-  return items
+function adIds(data) {
+  return extractItems(data)
     .map((item) => item?.adv?.advNo || item?.advNo || null)
     .filter(Boolean);
-}function adSamples(data, limit = 3) {
-  const items = Array.isArray(data?.data)
-    ? data.data
-    : Array.isArray(data?.data?.items)
-    ? data.data.items
-    : Array.isArray(data?.items)
-    ? data.items
-    : [];
+}
 
-  return items.slice(0, limit).map((item) => ({
+function adSamples(data, limit = 3) {
+  return extractItems(data).slice(0, limit).map((item) => ({
     advNo: item?.adv?.advNo ?? null,
     tradeType: item?.adv?.tradeType ?? null,
     asset: item?.adv?.asset ?? null,
@@ -73,7 +64,8 @@ function adIds(data) {
       positiveRate: item?.advertiser?.positiveRate ?? null
     }
   }));
-      }
+}
+
 function structuralSummary(item) {
   if (!item || typeof item !== "object") return null;
 
@@ -82,8 +74,7 @@ function structuralSummary(item) {
 
   return {
     firstItemKeys: Object.keys(item),
-    advKeys:
-      adv && typeof adv === "object" ? Object.keys(adv) : [],
+    advKeys: adv && typeof adv === "object" ? Object.keys(adv) : [],
     advertiserKeys:
       advertiser && typeof advertiser === "object"
         ? Object.keys(advertiser)
@@ -104,7 +95,7 @@ function structuralSummary(item) {
     hasAdvertiser: Boolean(item.advertiser),
     hasOrderCount:
       advertiser?.monthOrderCount != null ||
-      advertiser?.monthOrderCount != null,
+      advertiser?.orderCount != null,
     hasCompletionRate:
       advertiser?.monthFinishRate != null ||
       advertiser?.positiveRate != null
@@ -164,279 +155,7 @@ async function probe(name, url, options) {
     };
   }
 }
-async function fetchBinanceMarketSideGlobal(tradeType) {
-  const allItems = [];
 
-  for (const page of [1, 2, 3]) {
-    const response = await fetch(WEB_URL, {
-      method: "POST",
-      headers: browserHeaders,
-      redirect: "follow",
-      signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({
-        page,
-        rows: 20,
-        asset: "USDT",
-        fiat: "BRL",
-        tradeType
-      })
-    });
-
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`Binance HTTP ${response.status}`);
-    }
-
-    const data = JSON.parse(text);
-
-    if (data?.code !== "000000" || data?.success !== true) {
-      throw new Error(
-        `Binance response code ${data?.code ?? "UNKNOWN"}`
-      );
-    }
-
-    const items = Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data?.data?.items)
-      ? data.data.items
-      : Array.isArray(data?.items)
-      ? data.items
-      : [];
-
-    allItems.push(...items);
-  }
-
-  const unique = new Map();
-
-  for (const item of allItems) {
-    const id = item?.adv?.advNo;
-
-    if (id && !unique.has(id)) {
-      unique.set(id, item);
-    }
-  }
-
-  return Array.from(unique.values()).slice(0, 60);
-}
-async function runProbes() {
-  const publicBase = {
-    fiat: "BRL",
-    asset: "USDT",
-    limit: "10"
-  };
-
-  const publicBuy = new URL(PUBLIC_URL);
-  Object.entries({ ...publicBase, tradeType: "BUY" }).forEach(
-    ([key, value]) => publicBuy.searchParams.set(key, value)
-  );
-
-  const publicSell = new URL(PUBLIC_URL);
-  Object.entries({ ...publicBase, tradeType: "SELL" }).forEach(
-    ([key, value]) => publicSell.searchParams.set(key, value)
-  );
-const publicBuyPix = new URL(publicBuy);
-publicBuyPix.searchParams.set("tradeMethodIdentifiers", "Pix");
-
-const publicSellPix = new URL(publicSell);
-publicSellPix.searchParams.set("tradeMethodIdentifiers", "Pix");
-  const webPayload = (tradeType, pix = false) => ({
-  page: 1,
-  rows: 20,
-  asset: "USDT",
-  fiat: "BRL",
-  tradeType,
-  ...(pix ? { payTypes: ["Pix"] } : {})
-});
-  async function fetchBinanceMarketSide(tradeType) {
-  const allItems = [];
-
-  for (const page of [1, 2, 3]) {
-    const response = await fetch(WEB_URL, {
-      method: "POST",
-      headers: browserHeaders,
-      redirect: "follow",
-      signal: AbortSignal.timeout(15000),
-      body: JSON.stringify({
-        page,
-        rows: 20,
-        asset: "USDT",
-        fiat: "BRL",
-        tradeType
-      })
-    });
-
-    const text = await response.text();
-
-    if (!response.ok) {
-      throw new Error(`Binance HTTP ${response.status}`);
-    }
-
-    const data = JSON.parse(text);
-
-    if (data?.code !== "000000" || data?.success !== true) {
-      throw new Error(`Binance response code ${data?.code ?? "UNKNOWN"}`);
-    }
-
-    const items = Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data?.data?.items)
-      ? data.data.items
-      : Array.isArray(data?.items)
-      ? data.items
-      : [];
-
-    allItems.push(...items);
-  }
-
-  const unique = new Map();
-
-  for (const item of allItems) {
-    const id = item?.adv?.advNo;
-    if (id && !unique.has(id)) {
-      unique.set(id, item);
-    }
-  }
-
-  return Array.from(unique.values()).slice(0, 60);
-  }
-  const bybitPayload = (side) => ({
-  userId: "",
-  tokenId: "USDT",
-  currencyId: "BRL",
-  payment: ["14"],
-  side,
-  size: "20",
-  page: "1",
-  amount: "",
-  authMaker: false,
-  canTrade: false
-});
-const quoteBuy = new URL(QUOTE_URL);
-quoteBuy.searchParams.set("fiat", "BRL");
-quoteBuy.searchParams.set("asset", "USDT");
-quoteBuy.searchParams.set("tradeType", "BUY");
-
-const quoteSell = new URL(QUOTE_URL);
-quoteSell.searchParams.set("fiat", "BRL");
-quoteSell.searchParams.set("asset", "USDT");
-quoteSell.searchParams.set("tradeType", "SELL");
-
-const tradeMethodsBrl = new URL(TRADE_METHODS_URL);
-tradeMethodsBrl.searchParams.set("fiat", "BRL");
-  return Promise.all([probe("QUOTE_PRICE_BUY", quoteBuy, {
-  method: "GET",
-  headers: {
-    accept: "application/json, text/plain, */*",
-    "user-agent": browserHeaders["user-agent"]
-  }
-}),
-
-probe("QUOTE_PRICE_SELL", quoteSell, {
-  method: "GET",
-  headers: {
-    accept: "application/json, text/plain, */*",
-    "user-agent": browserHeaders["user-agent"]
-  }
-}),
-
-probe("TRADE_METHODS_BRL", tradeMethodsBrl, {
-  method: "GET",
-  headers: {
-    accept: "application/json, text/plain, */*",
-    "user-agent": browserHeaders["user-agent"]
-  }
-}),
-    probe("PUBLIC_AD_LIST_BUY", publicBuy, {
-      method: "GET",
-      headers: {
-        accept: "application/json, text/plain, */*",
-        "user-agent": browserHeaders["user-agent"]
-      }
-    }),
-
-    probe("PUBLIC_AD_LIST_SELL", publicSell, {
-      method: "GET",
-      headers: {
-        accept: "application/json, text/plain, */*",
-        "user-agent": browserHeaders["user-agent"]
-      }
-    }),
- probe("WEB_ADV_SEARCH_BUY_PAGE_2", WEB_URL, {
-  method: "POST",
-  headers: browserHeaders,
-  body: JSON.stringify({
-    ...webPayload("BUY"),
-    page: 2
-  })
-}),
-
-probe("WEB_ADV_SEARCH_BUY_PAGE_3", WEB_URL, {
-  method: "POST",
-  headers: browserHeaders,
-  body: JSON.stringify({
-    ...webPayload("BUY"),
-    page: 3
-  })
-}),
-    probe("WEB_ADV_SEARCH_BUY", WEB_URL, {
-      method: "POST",
-      headers: browserHeaders,
-      body: JSON.stringify(webPayload("BUY"))
-    }),
-
-    probe("WEB_ADV_SEARCH_SELL", WEB_URL, {
-      method: "POST",
-      headers: browserHeaders,
-      body: JSON.stringify(webPayload("SELL"))
-    })
- ,
-
-probe("PUBLIC_AD_LIST_BUY_PIX", publicBuyPix, {
-  method: "GET",
-  headers: {
-    accept: "application/json, text/plain, */*",
-    "user-agent": browserHeaders["user-agent"]
-  }
-}),
-
-probe("PUBLIC_AD_LIST_SELL_PIX", publicSellPix, {
-  method: "GET",
-  headers: {
-    accept: "application/json, text/plain, */*",
-    "user-agent": browserHeaders["user-agent"]
-  }
-}),
-
-probe("WEB_ADV_SEARCH_BUY_PIX", WEB_URL, {
-  method: "POST",
-  headers: browserHeaders,
-  body: JSON.stringify(webPayload("BUY", true))
-}),
-
-probe("WEB_ADV_SEARCH_SELL_PIX", WEB_URL, {
-  method: "POST",
-  headers: browserHeaders,
-  body: JSON.stringify(webPayload("SELL", true))
-}),
-  probe("BYBIT_BANK_TRANSFER_BUY", BYBIT_URL, {
-  method: "POST",
-  headers: {
-    "content-type": "application/json",
-    accept: "application/json"
-  },
-  body: JSON.stringify(bybitPayload("0"))
-}),
-
-probe("BYBIT_BANK_TRANSFER_SELL", BYBIT_URL, {
-  method: "POST",
-  headers: {
-    "content-type": "application/json",
-    accept: "application/json"
-  },
-  body: JSON.stringify(bybitPayload("1"))
-}),
- ]);                     
 async function fetchBinanceMarketSide(tradeType) {
   const allItems = [];
 
@@ -461,21 +180,21 @@ async function fetchBinanceMarketSide(tradeType) {
       throw new Error(`Binance HTTP ${response.status}`);
     }
 
-    const data = JSON.parse(text);
+    let data;
 
-    if (data?.code !== "000000" || data?.success !== true) {
-      throw new Error(`Binance response code ${data?.code ?? "UNKNOWN"}`);
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error("Binance returned non-JSON response");
     }
 
-    const items = Array.isArray(data?.data)
-      ? data.data
-      : Array.isArray(data?.data?.items)
-      ? data.data.items
-      : Array.isArray(data?.items)
-      ? data.items
-      : [];
+    if (data?.code !== "000000" || data?.success !== true) {
+      throw new Error(
+        `Binance response code ${data?.code ?? "UNKNOWN"}`
+      );
+    }
 
-    allItems.push(...items);
+    allItems.push(...extractItems(data));
   }
 
   const unique = new Map();
@@ -489,7 +208,177 @@ async function fetchBinanceMarketSide(tradeType) {
   }
 
   return Array.from(unique.values()).slice(0, 60);
-}}
+}
+
+async function runProbes() {
+  const publicBase = {
+    fiat: "BRL",
+    asset: "USDT",
+    limit: "10"
+  };
+
+  const publicBuy = new URL(PUBLIC_URL);
+  Object.entries({ ...publicBase, tradeType: "BUY" }).forEach(
+    ([key, value]) => publicBuy.searchParams.set(key, value)
+  );
+
+  const publicSell = new URL(PUBLIC_URL);
+  Object.entries({ ...publicBase, tradeType: "SELL" }).forEach(
+    ([key, value]) => publicSell.searchParams.set(key, value)
+  );
+
+  const publicBuyPix = new URL(publicBuy);
+  publicBuyPix.searchParams.set("tradeMethodIdentifiers", "Pix");
+
+  const publicSellPix = new URL(publicSell);
+  publicSellPix.searchParams.set("tradeMethodIdentifiers", "Pix");
+
+  const webPayload = (tradeType, pix = false) => ({
+    page: 1,
+    rows: 20,
+    asset: "USDT",
+    fiat: "BRL",
+    tradeType,
+    ...(pix ? { payTypes: ["Pix"] } : {})
+  });
+
+  const bybitPayload = (side) => ({
+    userId: "",
+    tokenId: "USDT",
+    currencyId: "BRL",
+    payment: ["14"],
+    side,
+    size: "20",
+    page: "1",
+    amount: "",
+    authMaker: false,
+    canTrade: false
+  });
+
+  const quoteBuy = new URL(QUOTE_URL);
+  quoteBuy.searchParams.set("fiat", "BRL");
+  quoteBuy.searchParams.set("asset", "USDT");
+  quoteBuy.searchParams.set("tradeType", "BUY");
+
+  const quoteSell = new URL(QUOTE_URL);
+  quoteSell.searchParams.set("fiat", "BRL");
+  quoteSell.searchParams.set("asset", "USDT");
+  quoteSell.searchParams.set("tradeType", "SELL");
+
+  const tradeMethodsBrl = new URL(TRADE_METHODS_URL);
+  tradeMethodsBrl.searchParams.set("fiat", "BRL");
+
+  return Promise.all([
+    probe("QUOTE_PRICE_BUY", quoteBuy, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("QUOTE_PRICE_SELL", quoteSell, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("TRADE_METHODS_BRL", tradeMethodsBrl, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("PUBLIC_AD_LIST_BUY", publicBuy, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("PUBLIC_AD_LIST_SELL", publicSell, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("WEB_ADV_SEARCH_BUY_PAGE_2", WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify({
+        ...webPayload("BUY"),
+        page: 2
+      })
+    }),
+
+    probe("WEB_ADV_SEARCH_BUY_PAGE_3", WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify({
+        ...webPayload("BUY"),
+        page: 3
+      })
+    }),
+
+    probe("WEB_ADV_SEARCH_BUY", WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify(webPayload("BUY"))
+    }),
+
+    probe("WEB_ADV_SEARCH_SELL", WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify(webPayload("SELL"))
+    }),
+
+    probe("PUBLIC_AD_LIST_BUY_PIX", publicBuyPix, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("PUBLIC_AD_LIST_SELL_PIX", publicSellPix, {
+      method: "GET",
+      headers: {
+        accept: "application/json, text/plain, */*"
+      }
+    }),
+
+    probe("WEB_ADV_SEARCH_BUY_PIX", WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify(webPayload("BUY", true))
+    }),
+
+    probe("WEB_ADV_SEARCH_SELL_PIX", WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      body: JSON.stringify(webPayload("SELL", true))
+    }),
+
+    probe("BYBIT_BANK_TRANSFER_BUY", BYBIT_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json"
+      },
+      body: JSON.stringify(bybitPayload("0"))
+    }),
+
+    probe("BYBIT_BANK_TRANSFER_SELL", BYBIT_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json"
+      },
+      body: JSON.stringify(bybitPayload("1"))
+    })
+  ]);
+}
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("content-type", "application/json; charset=utf-8");
@@ -498,84 +387,89 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET" && req.url === "/") {
     res.writeHead(200);
     res.end(
-      JSON.stringify({
-        service: "binance-p2p-runtime-probe",
-        status: "ready",
-        credentials: false,
-        persistence: false,
-        instructions: "Open /probe to execute one controlled diagnostic."
-      }, null, 2)
+      JSON.stringify(
+        {
+          service: "binance-p2p-runtime-probe",
+          status: "ready",
+          credentials: false,
+          persistence: false,
+          instructions: "Open /probe to execute one controlled diagnostic."
+        },
+        null,
+        2
+      )
     );
     return;
   }
-if (req.method === "GET" && req.url === "/binance/market") {
-  try {
-    const startedAt = Date.now();
 
-    const [buyItems, sellItems] = await Promise.all([
-      // P2P Vision BUY = anuncios Binance SELL
-      fetchBinanceMarketSideGlobal("SELL"),
+  if (req.method === "GET" && req.url === "/binance/market") {
+    try {
+      const startedAt = Date.now();
 
-      // P2P Vision SELL = anuncios Binance BUY
-      fetchBinanceMarketSideGlobal("BUY")
-    ]);
+      const [buyItems, sellItems] = await Promise.all([
+        fetchBinanceMarketSide("SELL"),
+        fetchBinanceMarketSide("BUY")
+      ]);
 
-    res.writeHead(200, {
-      "content-type": "application/json; charset=utf-8"
-    });
+      res.writeHead(200);
 
-    res.end(
-      JSON.stringify({
-        source: "BINANCE_WEB_ADV_SEARCH",
-        exchange: "BINANCE",
-        asset: "USDT",
-        fiat: "BRL",
-        collectedAt: new Date().toISOString(),
-        elapsedMs: Date.now() - startedAt,
-        books: {
-          BUY: {
-            nativeTradeType: "SELL",
-            count: buyItems.length,
-            items: buyItems
-          },
-          SELL: {
-            nativeTradeType: "BUY",
-            count: sellItems.length,
-            items: sellItems
+      res.end(
+        JSON.stringify({
+          source: "BINANCE_WEB_ADV_SEARCH",
+          exchange: "BINANCE",
+          asset: "USDT",
+          fiat: "BRL",
+          collectedAt: new Date().toISOString(),
+          elapsedMs: Date.now() - startedAt,
+          books: {
+            BUY: {
+              nativeTradeType: "SELL",
+              count: buyItems.length,
+              items: buyItems
+            },
+            SELL: {
+              nativeTradeType: "BUY",
+              count: sellItems.length,
+              items: sellItems
+            }
           }
-        }
-      })
-    );
+        })
+      );
 
-    return;
-  } catch (error) {
-    res.writeHead(502, {
-      "content-type": "application/json; charset=utf-8"
-    });
+      return;
+    } catch (error) {
+      res.writeHead(502);
 
-    res.end(
-      JSON.stringify({
-        error: "BINANCE_MARKET_COLLECTION_FAILED",
-        message: error instanceof Error ? error.message : String(error)
-      })
-    );
+      res.end(
+        JSON.stringify({
+          error: "BINANCE_MARKET_COLLECTION_FAILED",
+          message: error instanceof Error ? error.message : String(error)
+        })
+      );
 
-    return;
+      return;
+    }
   }
-}
+
   if (req.method === "GET" && req.url === "/probe") {
     const results = await runProbes();
 
     res.writeHead(200);
+
     res.end(
-      JSON.stringify({
-        runtime: "Render",
-        executedAt: new Date().toISOString(),
-        market: "USDT/BRL",
-        pixFilter: false,
-        results
-      }, null, 2)
+      JSON.stringify(
+        {
+          runtime: "Render",
+          executedAt: new Date().toISOString(),
+          market: "USDT/BRL",
+          pixFilter: false,
+          results
+        },
+        null,
+        2
+      )
     );
+
     return;
   }
 
