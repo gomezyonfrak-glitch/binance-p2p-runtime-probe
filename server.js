@@ -12,7 +12,8 @@ const QUOTE_URL =
 
 const TRADE_METHODS_URL =
   "https://www.binance.com/bapi/c2c/v1/public/c2c/agent/trade-methods";
-
+const BYBIT_URL =
+  "https://api2.bybit.com/fiat/otc/item/online";
 const browserHeaders = {
 "content-type": "application/json",
 "bnc-location": "BR",
@@ -193,6 +194,18 @@ publicSellPix.searchParams.set("tradeMethodIdentifiers", "Pix");
   tradeType,
   ...(pix ? { payTypes: ["Pix"] } : {})
 });
+  const bybitPayload = (side) => ({
+  userId: "",
+  tokenId: "USDT",
+  currencyId: "BRL",
+  payment: ["14"],
+  side,
+  size: "20",
+  page: "1",
+  amount: "",
+  authMaker: false,
+  canTrade: false
+});
 const quoteBuy = new URL(QUOTE_URL);
 quoteBuy.searchParams.set("fiat", "BRL");
 quoteBuy.searchParams.set("asset", "USDT");
@@ -299,7 +312,25 @@ probe("WEB_ADV_SEARCH_SELL_PIX", WEB_URL, {
   method: "POST",
   headers: browserHeaders,
   body: JSON.stringify(webPayload("SELL", true))
-}) ]);
+}),
+  probe("BYBIT_BANK_TRANSFER_BUY", BYBIT_URL, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    accept: "application/json"
+  },
+  body: JSON.stringify(bybitPayload("0"))
+}),
+
+probe("BYBIT_BANK_TRANSFER_SELL", BYBIT_URL, {
+  method: "POST",
+  headers: {
+    "content-type": "application/json",
+    accept: "application/json"
+  },
+  body: JSON.stringify(bybitPayload("1"))
+}),
+ ]);                     
 }
 
 const server = http.createServer(async (req, res) => {
