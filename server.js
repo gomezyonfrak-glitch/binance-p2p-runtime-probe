@@ -156,7 +156,7 @@ publicBuyPix.searchParams.set("tradeMethodIdentifiers", "Pix");
 const publicSellPix = new URL(publicSell);
 publicSellPix.searchParams.set("tradeMethodIdentifiers", "Pix");
   const webPayload = (tradeType, pix = false) => ({
-  page: 1,
+  page: 2,
   rows: 20,
   asset: "USDT",
   fiat: "BRL",
