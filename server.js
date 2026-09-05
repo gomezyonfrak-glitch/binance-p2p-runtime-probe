@@ -435,7 +435,7 @@ async function fetchBinanceMarketSide(tradeType) {
   }
 
   return Array.from(unique.values()).slice(0, 60);
-}
+}}
 
 const server = http.createServer(async (req, res) => {
   res.setHeader("content-type", "application/json; charset=utf-8");
