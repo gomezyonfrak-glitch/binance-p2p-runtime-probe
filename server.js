@@ -156,7 +156,7 @@ publicBuyPix.searchParams.set("tradeMethodIdentifiers", "Pix");
 const publicSellPix = new URL(publicSell);
 publicSellPix.searchParams.set("tradeMethodIdentifiers", "Pix");
   const webPayload = (tradeType, pix = false) => ({
-  page: 2,
+  page: 1,
   rows: 20,
   asset: "USDT",
   fiat: "BRL",
@@ -213,7 +213,23 @@ probe("TRADE_METHODS_BRL", tradeMethodsBrl, {
         "user-agent": browserHeaders["user-agent"]
       }
     }),
+ probe("WEB_ADV_SEARCH_BUY_PAGE_2", WEB_URL, {
+  method: "POST",
+  headers: browserHeaders,
+  body: JSON.stringify({
+    ...webPayload("BUY"),
+    page: 2
+  })
+}),
 
+probe("WEB_ADV_SEARCH_BUY_PAGE_3", WEB_URL, {
+  method: "POST",
+  headers: browserHeaders,
+  body: JSON.stringify({
+    ...webPayload("BUY"),
+    page: 3
+  })
+}),
     probe("WEB_ADV_SEARCH_BUY", WEB_URL, {
       method: "POST",
       headers: browserHeaders,
