@@ -402,7 +402,61 @@ const server = http.createServer(async (req, res) => {
     );
     return;
   }
+if (req.method === "GET" && req.url === "/binance/market") {
+  try {
+    const startedAt = Date.now();
 
+    const [buyItems, sellItems] = await Promise.all([
+      // P2P Vision BUY = anuncios Binance SELL
+      fetchBinanceMarketSide("SELL"),
+
+      // P2P Vision SELL = anuncios Binance BUY
+      fetchBinanceMarketSide("BUY")
+    ]);
+
+    res.writeHead(200, {
+      "content-type": "application/json; charset=utf-8"
+    });
+
+    res.end(
+      JSON.stringify({
+        source: "BINANCE_WEB_ADV_SEARCH",
+        exchange: "BINANCE",
+        asset: "USDT",
+        fiat: "BRL",
+        collectedAt: new Date().toISOString(),
+        elapsedMs: Date.now() - startedAt,
+        books: {
+          BUY: {
+            nativeTradeType: "SELL",
+            count: buyItems.length,
+            items: buyItems
+          },
+          SELL: {
+            nativeTradeType: "BUY",
+            count: sellItems.length,
+            items: sellItems
+          }
+        }
+      })
+    );
+
+    return;
+  } catch (error) {
+    res.writeHead(502, {
+      "content-type": "application/json; charset=utf-8"
+    });
+
+    res.end(
+      JSON.stringify({
+        error: "BINANCE_MARKET_COLLECTION_FAILED",
+        message: error instanceof Error ? error.message : String(error)
+      })
+    );
+
+    return;
+  }
+}
   if (req.method === "GET" && req.url === "/probe") {
     const results = await runProbes();
 
