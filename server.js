@@ -15,7 +15,6 @@ const TRADE_METHODS_URL =
 
 const browserHeaders = {
   "accept": "application/json, text/plain, */*",
-  "accept-language": "en-US,en;q=0.9",
   "content-type": "application/json","origin": "https://p2p.binance.com",
 "referer": "https://p2p.binance.com/es-LA",
 "bnc-location": "BR",
