@@ -14,6 +14,7 @@ const TRADE_METHODS_URL =
   "https://www.binance.com/bapi/c2c/v1/public/c2c/agent/trade-methods";
 
 const browserHeaders = {
+"content-type": "application/json",
 "bnc-location": "BR",
 };
 
