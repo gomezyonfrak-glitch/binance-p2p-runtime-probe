@@ -164,7 +164,61 @@ async function probe(name, url, options) {
     };
   }
 }
+async function fetchBinanceMarketSideGlobal(tradeType) {
+  const allItems = [];
 
+  for (const page of [1, 2, 3]) {
+    const response = await fetch(WEB_URL, {
+      method: "POST",
+      headers: browserHeaders,
+      redirect: "follow",
+      signal: AbortSignal.timeout(15000),
+      body: JSON.stringify({
+        page,
+        rows: 20,
+        asset: "USDT",
+        fiat: "BRL",
+        tradeType
+      })
+    });
+
+    const text = await response.text();
+
+    if (!response.ok) {
+      throw new Error(`Binance HTTP ${response.status}`);
+    }
+
+    const data = JSON.parse(text);
+
+    if (data?.code !== "000000" || data?.success !== true) {
+      throw new Error(
+        `Binance response code ${data?.code ?? "UNKNOWN"}`
+      );
+    }
+
+    const items = Array.isArray(data?.data)
+      ? data.data
+      : Array.isArray(data?.data?.items)
+      ? data.data.items
+      : Array.isArray(data?.items)
+      ? data.items
+      : [];
+
+    allItems.push(...items);
+  }
+
+  const unique = new Map();
+
+  for (const item of allItems) {
+    const id = item?.adv?.advNo;
+
+    if (id && !unique.has(id)) {
+      unique.set(id, item);
+    }
+  }
+
+  return Array.from(unique.values()).slice(0, 60);
+}
 async function runProbes() {
   const publicBase = {
     fiat: "BRL",
@@ -460,10 +514,10 @@ if (req.method === "GET" && req.url === "/binance/market") {
 
     const [buyItems, sellItems] = await Promise.all([
       // P2P Vision BUY = anuncios Binance SELL
-      fetchBinanceMarketSide("SELL"),
+      fetchBinanceMarketSideGlobal("SELL"),
 
       // P2P Vision SELL = anuncios Binance BUY
-      fetchBinanceMarketSide("BUY")
+      fetchBinanceMarketSideGlobal("BUY")
     ]);
 
     res.writeHead(200, {
