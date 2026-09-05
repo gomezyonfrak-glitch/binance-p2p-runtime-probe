@@ -43,7 +43,36 @@ function adIds(data) {
   return items
     .map((item) => item?.adv?.advNo || item?.advNo || null)
     .filter(Boolean);
-}
+}function adSamples(data, limit = 3) {
+  const items = Array.isArray(data?.data)
+    ? data.data
+    : Array.isArray(data?.data?.items)
+    ? data.data.items
+    : Array.isArray(data?.items)
+    ? data.items
+    : [];
+
+  return items.slice(0, limit).map((item) => ({
+    advNo: item?.adv?.advNo ?? null,
+    tradeType: item?.adv?.tradeType ?? null,
+    asset: item?.adv?.asset ?? null,
+    fiat: item?.adv?.fiatUnit ?? null,
+    price: item?.adv?.price ?? null,
+    tradableQuantity: item?.adv?.tradableQuantity ?? null,
+    surplusAmount: item?.adv?.surplusAmount ?? null,
+    minSingleTransAmount: item?.adv?.minSingleTransAmount ?? null,
+    maxSingleTransAmount: item?.adv?.maxSingleTransAmount ?? null,
+    tradeMethods: item?.adv?.tradeMethods ?? [],
+    advertiser: {
+      nickName: item?.advertiser?.nickName ?? null,
+      userNo: item?.advertiser?.userNo ?? null,
+      orderCount: item?.advertiser?.orderCount ?? null,
+      monthOrderCount: item?.advertiser?.monthOrderCount ?? null,
+      monthFinishRate: item?.advertiser?.monthFinishRate ?? null,
+      positiveRate: item?.advertiser?.positiveRate ?? null
+    }
+  }));
+      }
 function structuralSummary(item) {
   if (!item || typeof item !== "object") return null;
 
@@ -116,6 +145,7 @@ async function probe(name, url, options) {
       success: json ? data?.success ?? null : null,
       items: json ? countItems(data) : 0,
       advIds: json ? adIds(data) : [],
+      samples: json ? adSamples(data) : [],
       structure: structuralSummary(item),
       transport: {
         server: response.headers.get("server"),
