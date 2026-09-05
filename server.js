@@ -17,7 +17,6 @@ const browserHeaders = {
   "accept": "application/json, text/plain, */*",
   "content-type": "application/json","origin": "https://p2p.binance.com",
 "referer": "https://p2p.binance.com/es-LA",
-"bnc-location": "BR",
 "c2ctype": "c2c_web",
 "clienttype": "web",
   "user-agent":
