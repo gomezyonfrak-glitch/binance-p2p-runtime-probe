@@ -31,7 +31,19 @@ function firstItem(data) {
   if (Array.isArray(data?.items)) return data.items[0];
   return null;
 }
+function adIds(data) {
+  const items = Array.isArray(data?.data)
+    ? data.data
+    : Array.isArray(data?.data?.items)
+      ? data.data.items
+      : Array.isArray(data?.items)
+        ? data.items
+        : [];
 
+  return items
+    .map((item) => item?.adv?.advNo || item?.advNo || null)
+    .filter(Boolean);
+}
 function structuralSummary(item) {
   if (!item || typeof item !== "object") return null;
 
@@ -103,6 +115,7 @@ async function probe(name, url, options) {
       code: json ? data?.code ?? null : null,
       success: json ? data?.success ?? null : null,
       items: json ? countItems(data) : 0,
+      advIds: json ? adIds(data) : [],
       structure: structuralSummary(item),
       transport: {
         server: response.headers.get("server"),
