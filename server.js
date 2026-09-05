@@ -16,10 +16,17 @@ const TRADE_METHODS_URL =
 const browserHeaders = {
   "accept": "application/json, text/plain, */*",
   "accept-language": "en-US,en;q=0.9",
-  "content-type": "application/json",
+  "content-type": "application/json","origin": "https://p2p.binance.com",
+"referer": "https://p2p.binance.com/es-LA",
+"bnc-location": "BR",
+"bnc-time-zone": "America/Sao_Paulo",
+"c2ctype": "c2c_web",
+"clienttype": "web",
+"sec-fetch-dest": "empty",
+"sec-fetch-mode": "cors",
+"sec-fetch-site": "same-origin",
   "user-agent":
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 " +
-    "(KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36"
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36"
 };
 
 function countItems(data) {
